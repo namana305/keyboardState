@@ -8,7 +8,7 @@
 #define PRESSING 0          // khi nút nhấn được nhấn tín hiệu đọc được là 0 (voltage) tương đương với mức LOW của arduino và logic 0
 #define NONE_PRESSING 1     // khi nút nhấn được nhấn tín hiệu đọc được là giá trị điện áp =0.6*VCC =0.6*5~ 3 (voltage) tương đương với mức HIGH của arduino và logic 1
 #define SWITCH_BUTTON_PIN 2 // dùng chân số 2 để nhận tín hiệu nút nhấn
-// định nghĩa các trạng thái của nút nhấn được tác động bởi user
+// định nghĩa các sự kiện của nút nhấn được tác động bởi user
 // tại sao phải làm như vầy? là tại vì sử dụng switch để so sánh điều kiện sẽ nhanh hơn sử dụng if nhưng switch không so sánh string được
 // nên định nghĩa tên cho dễ hiểu và gắn nó giá trị là 1 con số thi có thể sử dụng switch (tại dòng code 80)
 #define FREE_STATE 0         // Không nhấn
@@ -69,7 +69,7 @@ void loop()
     {
       if ((timeLine_now - pressed_timeStamp_Start) >= hold_timeStamp_delta) // thì nếu thời gian hiện tại trừ cho thời gian ghi nhận từ lúc bắt đầu nhấn lớn hơn hoặc bằng thời gian quy định trạng thái nhấn giữ
       {
-        BUTTON_STATE = HOLD_STATE;                            // thì đặt trạng thái cho nút nhấn là HOLD_STATE
+        BUTTON_STATE = HOLD_STATE;                            // thì ghi nhận sự kiện cho nút nhấn là HOLD_STATE
         Serial.println("warning: button is being held down"); // debug to console
       }
     }
@@ -79,48 +79,49 @@ void loop()
       // như thế sẽ sinh lỗi còn lỗi gì thì xóa "&& wasPressed == true" của (*2) đi rồi chạy thử mà xem
       if ((timeLine_now - pressed_timeStamp_Start) < hold_timeStamp_delta) // nếu thời gian hiện tại trừ cho thời gian ghi nhận sự kiện nhấn nút trước đó nhỏ hơn thời gian chờ sự kiện doule click
       {                                                                    // thì
-        BUTTON_STATE = FIRST_CLICK_STATE;                                  // mới tính là nút được nhấn lần đầu tiên
-        last_first_click_timeStamp = timeLine_now;                         // reset lại thời gian nhả nút để tránh lỗi lỗi gì thì xóa dòng này đi rồi chạy thử sẽ biết
+        BUTTON_STATE = FIRST_CLICK_STATE;                                  // mới tính là nút được nhấn lần đầu tiên ghi nhận sự kiện FIRST_CLICK_STATE
+        last_first_click_timeStamp = timeLine_now;                         // ghi nhận thời gian nhả nút để so sánh trong khi chờ lần nhấn tiếp theo xem nó có đúng là double click hay không
         Serial.println("warning: button has been first clicked");          // debug to console
       }
       pressed_timeStamp_Start = millis(); // reset lại thời gian ghi nhận nút được nhấn vì tất nhiên là bây giừ nút đã đươc nhã ra rồi
       wasPressed = false;                 // reset lại trạng thái ghi nhận nút đã và đang nhấn
     }
   }
-  else
+  else // sau khi nút nhấn được ghi nhận các sự kiện
   {
     switch (BUTTON_STATE)
     {
-    case FIRST_CLICK_STATE:
-      if (timeLine_now - last_first_click_timeStamp < doubleClick_timeStamp_delta)
+    case FIRST_CLICK_STATE:                                                           // khi xảy ra sự kiên nhấn lần đầu tiên
+      if ((timeLine_now - last_first_click_timeStamp) <= doubleClick_timeStamp_delta) // nếu khoảng thời gian xảy ra 2 lần nhấn nút nhỏ hơn hoặc bằng thòi gian chờ ghi nhận sự kiện double click
       {
-        if (digitalRead(SWITCH_BUTTON_PIN) == PRESSING)
+        if (digitalRead(SWITCH_BUTTON_PIN) == PRESSING) // nếu nút còn đang nhấn thì gán cho nó sự kiện DOUBLE_CLICK_STATE (*4)
         {
           BUTTON_STATE = DOUBLE_CLICK_STATE;
           Serial.println("warning: button has been double clicked");
         }
       }
-      else
+      else // ngược lại điều kiện (*4) nếu nút không được nhấn trong thời gian doubleClick_timeStamp_delta
       {
-        BUTTON_STATE = CLICK_STATE;
+        BUTTON_STATE = CLICK_STATE; // đó là 1 lần nhấn => sinh ra sự kiện click
         Serial.println("warning: button has been true clicked");
       }
       break;
-    case CLICK_STATE:
-      if (digitalRead(SWITCH_BUTTON_PIN) == NONE_PRESSING)
+    case CLICK_STATE: // sự kiện click
+
+      if (digitalRead(SWITCH_BUTTON_PIN) == NONE_PRESSING) // nếu phím nhả ra rồi thì nên reset sự kiện nút nhấn về tự do để còn loop so sánh tiếp
       {
         BUTTON_STATE = FREE_STATE;
       }
 
       break;
-    case DOUBLE_CLICK_STATE:
-      if (digitalRead(SWITCH_BUTTON_PIN) == NONE_PRESSING)
+    case DOUBLE_CLICK_STATE:                               // sự kiện double click
+      if (digitalRead(SWITCH_BUTTON_PIN) == NONE_PRESSING) // nếu phím nhả ra rồi thì nên reset sự kiện nút nhấn về tự do để còn loop so sánh tiếp
       {
         BUTTON_STATE = FREE_STATE;
       }
       break;
-    case HOLD_STATE:
-      if (digitalRead(SWITCH_BUTTON_PIN) == NONE_PRESSING)
+    case HOLD_STATE:                                       // sự kiện nhấn giữ
+      if (digitalRead(SWITCH_BUTTON_PIN) == NONE_PRESSING) // nếu phím nhả ra rồi thì nên reset sự kiện nút nhấn về tự do để còn loop so sánh tiếp
       {
         BUTTON_STATE = FREE_STATE;
       }
